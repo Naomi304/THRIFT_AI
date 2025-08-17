@@ -8,17 +8,22 @@ load_dotenv(dotenv_path="C:/Users/naomi/THRIFT_AI/apikeys.env")
 api_key = os.getenv('API_KEY') 
 
 
-def get_craigslist_data(api_key, search="laptop", location="New York"):
-    craigslist_url = "https://craigslist-data.p.rapidapi.com/categories"
+def get_craigslist_data(brand, item_type, size, color, material, condition):
+    craigslist_url = "https://craigslist-data.p.rapidapi.com/search"
 
     headers = {
         "X-RapidAPI-Key": api_key,
         "X-RapidAPI-Host": "craigslist-data.p.rapidapi.com"
     }
 
+    # Dynamically set the parameters based on user input
     params = {
-        "search": search,
-        "location": location
+        "query": item_type,  
+        "brand": brand,      
+        "size": size,        
+        "color": color,      
+        "material": material,  
+        "condition": condition  
     }
 
     # Send GET request to Craigslist API
@@ -29,6 +34,3 @@ def get_craigslist_data(api_key, search="laptop", location="New York"):
         return response.json()  # Return JSON response with data
     else:
         return {"Error": response.status_code, "Message": response.text}
-craigslist_data = get_craigslist_data(api_key)
-
-print("Craigslist Data:", craigslist_data)
