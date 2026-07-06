@@ -7,12 +7,12 @@ from concurrent.futures import ThreadPoolExecutor
 import traceback
 
 # Import API functions
-from amazon_api import get_amazon_data
-from craigslist_api import get_craigslist_data
-from kijiji_api import get_kijiji_data
-from ebay_api import get_ebay_data
-from google_api import get_google_data
-from ai_scraper_api import get_ai_scraper_data
+from apis.amazon_api import get_amazon_data
+from apis.craigslist_api import get_craigslist_data
+from apis.kijiji_api import get_kijiji_data
+from apis.ebay_api import get_ebay_data
+from apis.google_api import get_google_data
+from apis.ai_scraper_api import get_ai_scraper_data
 from utils import validate_input, sanitize_input, is_na
 
 # Configure logging
