@@ -1,55 +1,153 @@
 import os
+from urllib.parse import quote
 from dotenv import load_dotenv
 import requests
-import urllib.parse
 
-# Load environment variables from .env file
-load_dotenv(dotenv_path="C:/Users/naomi/THRIFT_AI/apikeys.env")
+load_dotenv("apikeys.env")
 
-# Get the API key from the environment variables
-api_key = os.getenv('API_KEY')
+api_key = os.getenv("API_KEY")
 
-def get_kijiji_data_by_url(listing_url):
+KIJIJI_HOST = "kijiji.p.rapidapi.com"
+# /searchByKeyword on this provider is broken and returns
+# {"error":"Error Searching By Keyword"} for any input. Use /searchByURL and
+# feed it a Kijiji search URL built from the user's query.
+SEARCH_BY_URL_ENDPOINT = f"https://{KIJIJI_HOST}/searchByURL"
+
+
+def build_kijiji_search_url(keyword):
+    """Build a Kijiji Canada-wide search URL from a keyword string.
+
+    Kijiji search paths look like: /b-canada/<slug>/k0l0
     """
-    Fetches data from Kijiji API based on a provided listing URL.
-    :param listing_url: The URL of the Kijiji listing to fetch data for
-    :return: JSON response with search results or error message
-    """
-    # URL encode the provided URL
-    encoded_url = urllib.parse.quote(listing_url, safe='')
+    slug = quote(keyword.strip().lower().replace(" ", "-"), safe="-")
+    return f"https://www.kijiji.ca/b-canada/{slug}/k0l0"
 
-    # Construct the URL for the "Search By URL" endpoint
-    kijiji_url = f"https://kijiji.p.rapidapi.com/searchByURL?url={encoded_url}"
+
+def clean_kijiji_results(api_response):
+    products = []
+
+    raw_items = (
+        api_response.get("results")
+        or api_response.get("data")
+        or api_response.get("listings")
+        or api_response.get("ads")
+        or []
+    )
+
+    for item in raw_items[:10]:
+        products.append({
+            "title": item.get("title", "No title"),
+            "price": item.get("price", "Price unavailable"),
+            "location": item.get("location", "Location unavailable"),
+            "url": item.get("url") or item.get("link") or "#",
+            "image": item.get("image") or item.get("thumbnail") or "",
+            "source": "Kijiji"
+        })
+
+    return products
+
+
+def get_kijiji_data(brand, item_type, size, color, material, condition):
+    if not api_key:
+        return {
+            "status": "Error",
+            "message": "API_KEY is missing. Check apikeys.env.",
+            "products": []
+        }
+
+    query_parts = [brand, color, material, item_type, size, condition]
+    keyword = " ".join([str(part) for part in query_parts if part]).strip()
+
+    if not keyword:
+        return {
+            "status": "Error",
+            "message": "No search terms provided.",
+            "products": []
+        }
+
+    search_url = build_kijiji_search_url(keyword)
 
     headers = {
         "X-RapidAPI-Key": api_key,
-        "X-RapidAPI-Host": "kijiji.p.rapidapi.com"
+        "X-RapidAPI-Host": KIJIJI_HOST
     }
 
     try:
-        # Send the GET request to the Kijiji API
-        response = requests.get(kijiji_url, headers=headers)
+        response = requests.get(
+            SEARCH_BY_URL_ENDPOINT,
+            headers=headers,
+            params={"URL": search_url},
+            timeout=15
+        )
 
-        print(f"Status Code: {response.status_code}")
-        print("Response Content:", response.text)
+        if response.status_code == 429:
+            return {
+                "status": "Error",
+                "message": "Kijiji API monthly quota exceeded on RapidAPI. Upgrade the plan or wait for reset.",
+                "products": []
+            }
 
-        # Check if the response status code is 200 (OK)
-        if response.status_code == 200:
-            return response.json()  # Return the JSON response data
-        else:
-            print(f"Kijiji API Error: {response.status_code}, {response.text}")
-            return None
+        if response.status_code != 200:
+            return {
+                "status": "Error",
+                "message": f"HTTP {response.status_code}: {response.text[:200]}",
+                "products": []
+            }
+
+        try:
+            api_response = response.json()
+        except ValueError:
+            return {
+                "status": "Error",
+                "message": f"Non-JSON response: {response.text[:200]}",
+                "products": []
+            }
+
+        # Provider returns 200 with an error body for known failure modes.
+        if isinstance(api_response, dict):
+            if api_response.get("error"):
+                return {
+                    "status": "Error",
+                    "message": f"Kijiji provider error: {api_response['error']}",
+                    "products": []
+                }
+            if api_response.get("message") == "Invalid URL":
+                return {
+                    "status": "Error",
+                    "message": f"Kijiji rejected search URL: {search_url}",
+                    "products": []
+                }
+
+        products = clean_kijiji_results(api_response)
+
+        return {
+            "status": "Success",
+            "message": f"Found {len(products)} Kijiji listings.",
+            "products": products
+        }
+
+    except requests.Timeout:
+        return {
+            "status": "Error",
+            "message": "Kijiji API request timed out.",
+            "products": []
+        }
     except Exception as e:
-        print(f"Error fetching Kijiji listing data: {str(e)}")
-        return None
+        return {
+            "status": "Error",
+            "message": str(e),
+            "products": []
+        }
 
 
-# Test the function with a specific listing URL. GET RID OF THIS ONCE TESTING IS COMPLETE
- if __name__ == "__main__":
-    test_url = "https://www.kijiji.ca/v-laptop/cambridge/dell-xps-15-9510-i7-rtx-3050-ti-32gb-1tb-ssd-4k-oled/1673450675"  # Real URL from Kijiji
-    test_data = get_kijiji_data_by_url(test_url)
+if __name__ == "__main__":
+    result = get_kijiji_data(
+        brand="Nike",
+        item_type="shirt",
+        size="M",
+        color="black",
+        material="cotton",
+        condition="used"
+    )
 
-    if test_data:
-        print("Test Data from Kijiji:", test_data)
-    else:
-        print("No data fetched from Kijiji or an error occurred.")
+    print(result)

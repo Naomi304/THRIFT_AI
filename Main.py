@@ -9,9 +9,11 @@ import traceback
 # Import API functions
 from amazon_api import get_amazon_data
 from craigslist_api import get_craigslist_data
-from kijiji_api import get_kijiji_data_by_url
+from kijiji_api import get_kijiji_data
+from ebay_api import get_ebay_data
+from google_api import get_google_data
 from ai_scraper_api import get_ai_scraper_data
-from utils import validate_input, sanitize_input
+from utils import validate_input, sanitize_input, is_na
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,7 +51,10 @@ def get_ml_prediction(brand, item_type, size):
     """Get ML price prediction with error handling"""
     if not models_loaded:
         return None, "ML models not available"
-    
+
+    if is_na(brand) or is_na(item_type) or is_na(size):
+        return None, "AI prediction skipped: brand, item type, and size are required (one or more marked N/A)"
+
     try:
         # Encode the user input
         brand_encoded = label_encoder.transform([brand])[0]
@@ -72,51 +77,180 @@ def get_ml_prediction(brand, item_type, size):
 
 def fetch_api_data(brand, item_type, size, color, material, condition):
     """Fetch data from all APIs concurrently"""
+
     results = {
         'amazon': {'status': 'error', 'data': None, 'message': 'Not fetched'},
         'craigslist': {'status': 'error', 'data': None, 'message': 'Not fetched'},
         'kijiji': {'status': 'error', 'data': None, 'message': 'Not fetched'},
+        'ebay': {'status': 'error', 'data': None, 'message': 'Not fetched'},
+        'google': {'status': 'error', 'data': None, 'message': 'Not fetched'},
         'ai_scraper': {'status': 'error', 'data': None, 'message': 'Not fetched'}
     }
-    
+
+    def is_success(data):
+        if not data:
+            return False
+        status = str(data.get("status", "")).lower()
+        return status == "success"
+
+    def get_message(data):
+        if not data:
+            return "No data returned"
+        return data.get("message") or data.get("Message") or data.get("error") or "API error"
+
     def fetch_amazon():
         try:
             data = get_amazon_data(brand, item_type, size, color, material, condition)
-            if data and 'Error' not in data:
-                results['amazon'] = {'status': 'success', 'data': data, 'message': 'Data retrieved'}
+
+            if is_success(data):
+                results['amazon'] = {
+                    'status': 'success',
+                    'data': data,
+                    'message': data.get('message', 'Data retrieved')
+                }
             else:
-                results['amazon'] = {'status': 'error', 'data': None, 'message': data.get('Message', 'API error')}
+                results['amazon'] = {
+                    'status': 'error',
+                    'data': data,
+                    'message': get_message(data)
+                }
+
         except Exception as e:
-            results['amazon'] = {'status': 'error', 'data': None, 'message': str(e)}
-    
+            results['amazon'] = {
+                'status': 'error',
+                'data': None,
+                'message': str(e)
+            }
+
     def fetch_craigslist():
         try:
             data = get_craigslist_data(brand, item_type, size, color, material, condition)
-            if data and 'Error' not in data:
-                results['craigslist'] = {'status': 'success', 'data': data, 'message': 'Data retrieved'}
+
+            if is_success(data):
+                results['craigslist'] = {
+                    'status': 'success',
+                    'data': data,
+                    'message': data.get('message', 'Data retrieved')
+                }
             else:
-                results['craigslist'] = {'status': 'error', 'data': None, 'message': data.get('Message', 'API error')}
+                results['craigslist'] = {
+                    'status': 'error',
+                    'data': data,
+                    'message': get_message(data)
+                }
+
         except Exception as e:
-            results['craigslist'] = {'status': 'error', 'data': None, 'message': str(e)}
-    
+            results['craigslist'] = {
+                'status': 'error',
+                'data': None,
+                'message': str(e)
+            }
+
+    def fetch_ebay():
+        try:
+            data = get_ebay_data(brand, item_type, size, color, material, condition)
+
+            if is_success(data):
+                results['ebay'] = {
+                    'status': 'success',
+                    'data': data,
+                    'message': data.get('message', 'Data retrieved')
+                }
+            else:
+                results['ebay'] = {
+                    'status': 'error',
+                    'data': data,
+                    'message': get_message(data)
+                }
+
+        except Exception as e:
+            results['ebay'] = {
+                'status': 'error',
+                'data': None,
+                'message': str(e)
+            }
+
+    def fetch_kijiji():
+        try:
+            data = get_kijiji_data(brand, item_type, size, color, material, condition)
+
+            if is_success(data):
+                results['kijiji'] = {
+                    'status': 'success',
+                    'data': data,
+                    'message': data.get('message', 'Data retrieved')
+                }
+            else:
+                results['kijiji'] = {
+                    'status': 'error',
+                    'data': data,
+                    'message': get_message(data)
+                }
+
+        except Exception as e:
+            results['kijiji'] = {
+                'status': 'error',
+                'data': None,
+                'message': str(e)
+            }
+
+    def fetch_google():
+        try:
+            data = get_google_data(brand, item_type, size, color, material, condition)
+
+            if is_success(data):
+                results['google'] = {
+                    'status': 'success',
+                    'data': data,
+                    'message': data.get('message', 'Data retrieved')
+                }
+            else:
+                results['google'] = {
+                    'status': 'error',
+                    'data': data,
+                    'message': get_message(data)
+                }
+
+        except Exception as e:
+            results['google'] = {
+                'status': 'error',
+                'data': None,
+                'message': str(e)
+            }
+
     def fetch_ai_scraper():
         try:
-            # Use a generic clothing search URL for AI scraper
             search_url = f"https://www.google.com/search?q={brand}+{item_type}+{size}+price"
             data = get_ai_scraper_data(search_url, summary=True)
-            if data and 'Error' not in data:
-                results['ai_scraper'] = {'status': 'success', 'data': data, 'message': 'Data retrieved'}
+
+            if is_success(data):
+                results['ai_scraper'] = {
+                    'status': 'success',
+                    'data': data,
+                    'message': data.get('message', 'Data retrieved')
+                }
             else:
-                results['ai_scraper'] = {'status': 'error', 'data': None, 'message': data.get('Message', 'API error')}
+                results['ai_scraper'] = {
+                    'status': 'error',
+                    'data': data,
+                    'message': get_message(data)
+                }
+
         except Exception as e:
-            results['ai_scraper'] = {'status': 'error', 'data': None, 'message': str(e)}
-    
-    # Execute API calls concurrently
-    with ThreadPoolExecutor(max_workers=3) as executor:
+            results['ai_scraper'] = {
+                'status': 'error',
+                'data': None,
+                'message': str(e)
+            }
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
         executor.submit(fetch_amazon)
         executor.submit(fetch_craigslist)
+        executor.submit(fetch_kijiji)
+        executor.submit(fetch_ebay)
+        executor.submit(fetch_google)
         executor.submit(fetch_ai_scraper)
-    
+
     return results
 
 #workshop
@@ -185,10 +319,21 @@ def search():
         
         # Get ML prediction
         predicted_price, prediction_error = get_ml_prediction(brand, item_type, size or 'M')
-        
-        # Fetch market data from APIs
+
+        # Fetch market data from APIs — treat N/A as absent so we don't literally
+        # search marketplaces for the string "N/A".
+        def _drop_na(v):
+            return "" if is_na(v) else v
+
+        market_data = fetch_api_data(
+            _drop_na(brand),
+            _drop_na(item_type),
+            _drop_na(size),
+            _drop_na(color),
+            _drop_na(material),
+            _drop_na(condition) or "used",
+        )
         logger.info(f"Fetching market data for {brand} {item_type}")
-        market_data = fetch_api_data(brand, item_type, size, color, material, condition)
         
         # Determine deal quality
         deal_assessment, deal_class = determine_deal_quality(predicted_price, market_data)
