@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THRIFT AI - Smart Price Checker</title>
+
+    <style>
+        :root {
+            --pink: #f3066c;
+            --hot-pink: #ae0353;
+            --blue: #5ab7ff;
+            --deep-blue: #2563eb;
+            --yellow: #ffd84d;
+            --cream: #fff7df;
+            --soft-pink: #ffe3f0;
+            --soft-blue: #e2f4ff;
+            --ink: #1f2937;
+            --muted: #6b7280;
+            --white: #ffffff;
+            --border: #f1d7e5;
+            --shadow: 0 20px 50px rgba(31, 41, 55, 0.14);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 15% 15%, #82194a 0, transparent 30%),
+        radial-gradient(circle at 85% 20%, #aa266d 0, transparent 28%),
+        radial-gradient(circle at 50% 85%, #8f245b 0, transparent 35%),
+        linear-gradient(135deg, #ffd1e8, #992861, #8e1d52);
+    padding: 28px 16px;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.floating-receipts {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.bg-receipt {
+    position: absolute;
+    width: 190px;
+    background: rgba(255, 253, 243, 0.45);
+    border: 2px dashed rgba(31, 41, 55, 0.35);
+    border-radius: 16px;
+    padding: 16px;
+    color: rgba(31, 41, 55, 0.5);
+    box-shadow: 0 16px 30px rgba(255, 63, 152, 0.14);
+    animation: floatReceipt 14s ease-in-out infinite;
+}
+
+.bg-receipt:nth-child(1) {
+    top: 9%;
+    left: 5%;
+    transform: rotate(-8deg);
+}
+
+
+
+.bg-receipt:nth-child(2) {
+    bottom: 10%;
+    right: 7%;
+    transform: rotate(7deg);
+    animation-delay: 3s;
+}
+
+.bg-receipt:nth-child(3) {
+    top: 45%;
+    right: 3%;
+    transform: rotate(-4deg);
+    animation-delay: 6s;
+}
+
+.bg-receipt:nth-child(4) {
+    top: 85%;
+    right: 15%;
+    transform: rotate(-4deg); 
+    animation-delay: 6s;
+}
+
+.bg-receipt:nth-child(5) {
+    top: 14%;
+    right: 28%;
+    transform: rotate(-6deg);
+    animation-delay: 4.5s;
+}
+
+.bg-receipt:nth-child(6) {
+    top: 25%;
+    left: 8%;
+    transform: rotate(4deg);
+    animation-delay: 1.5s;
+}
+
+.bg-receipt:nth-child(7) {
+    top: 60%;
+    left: 6%;
+    transform: rotate(-6deg);
+    animation-delay: 2.5s;
+}
+
+.bg-receipt:nth-child(8) {
+    bottom: 26%;
+    left: 18%;
+    transform: rotate(3deg);
+    animation-delay: 3.5s;
+}
+
+.bg-receipt:nth-child(9) {
+    top: 3%;
+    right: 20%;
+    transform: rotate(2deg);
+    animation-delay: 4s;
+}
+
+.bg-receipt:nth-child(10) {
+    top: 62%;
+    right: 18%;
+    transform: rotate(-4deg);
+    animation-delay: 5s;
+}
+
+.bg-receipt:nth-child(11) {
+    top: 30%;
+    right: 12%;
+    transform: rotate(5deg);
+    animation-delay: 5.5s;
+}
+
+.bg-receipt:nth-child(12) {
+    bottom: 4%;
+    right: 40%;
+    transform: rotate(-3deg);
+    animation-delay: 6s;
+}
+
+.bg-receipt:nth-child(13) {
+    top: 78%;
+    right: 3%;
+    transform: rotate(4deg);
+    animation-delay: 6.5s;
+}
+
+.bg-receipt:nth-child(14) {
+    bottom: 20%;
+    left: 4%;
+    transform: rotate(-5deg);
+    animation-delay: 7s;
+}
+
+.bg-receipt:nth-child(15) {
+    top: 3%;
+    right: 42%;
+    transform: rotate(3deg);
+    animation-delay: 8s;
+}
+
+.bg-receipt.small {
+    width: 165px;
+}
+
+.bg-receipt.tilted {
+    width: 175px;
+}
+
+.bg-receipt.blue-note {
+    width: 170px;
+    background: rgba(226, 244, 255, 0.5);
+    border-color: rgba(90, 183, 255, 0.45);
+}
+
+.bg-receipt.yellow-note {
+    width: 180px;
+    background: rgba(255, 248, 214, 0.55);
+    border-color: rgba(255, 216, 77, 0.6);
+}
+
+.receipt-top {
+    text-align: center;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.receipt-line {
+    border-top: 1px dashed rgba(31, 41, 55, 0.35);
+    margin-bottom: 8px;
+}
+
+.receipt-row-bg {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+    padding: 5px 0;
+    border-bottom: 1px dashed rgba(31, 41, 55, 0.18);
+}
+
+.receipt-stamp-bg {
+    display: inline-block;
+    margin-top: 10px;
+    color: rgba(255, 63, 152, 0.65);
+    border: 2px solid rgba(255, 63, 152, 0.55);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-weight: 900;
+    transform: rotate(-2deg);
+}
+
+@keyframes floatReceipt {
+    0% {
+        translate: 0 0;
+    }
+
+    50% {
+        translate: 0 -24px;
+    }
+
+    100% {
+        translate: 0 0;
+    }
+}
+
+.bg-receipt.small {
+    width: 160px;
+}
+
+.bg-receipt.tilted {
+    width: 175px;
+}
+
+
+
+.receipt-top {
+    text-align: center;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.receipt-line {
+    border-top: 1px dashed rgba(31, 41, 55, 0.35);
+    margin-bottom: 8px;
+}
+
+.receipt-row-bg {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+    padding: 5px 0;
+    border-bottom: 1px dashed rgba(31, 41, 55, 0.18);
+}
+
+@keyframes floatReceipt {
+    0% {
+        translate: 0 0;
+    }
+
+    50% {
+        translate: 0 -24px;
+    }
+
+    100% {
+        translate: 0 0;
+    }
+}
+
+.floating-clothes {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.clothing {
+    position: absolute;
+    font-size: 42px;
+    opacity: 0.28;
+    animation: floatClothes 12s ease-in-out infinite;
+    filter: drop-shadow(0 8px 10px rgba(255, 63, 152, 0.18));
+}
+
+.clothing:nth-child(1) {
+    top: 8%;
+    left: 6%;
+    animation-delay: 0s;
+}
+
+.clothing:nth-child(2) {
+    top: 18%;
+    right: 8%;
+    animation-delay: 1.5s;
+}
+
+.clothing:nth-child(3) {
+    top: 45%;
+    left: 3%;
+    animation-delay: 3s;
+}
+
+.clothing:nth-child(4) {
+    top: 58%;
+    right: 5%;
+    animation-delay: 4.5s;
+}
+
+.clothing:nth-child(5) {
+    bottom: 10%;
+    left: 12%;
+    animation-delay: 2s;
+}
+
+.clothing:nth-child(6) {
+    bottom: 8%;
+    right: 14%;
+    animation-delay: 5.5s;
+}
+
+.clothing:nth-child(7) {
+    top: 34%;
+    left: 48%;
+    animation-delay: 6.5s;
+}
+
+.clothing:nth-child(8) {
+    bottom: 28%;
+    right: 35%;
+    animation-delay: 7.5s;
+}
+
+@keyframes floatClothes {
+    0% {
+        transform: translateY(0) rotate(0deg) scale(1);
+    }
+
+    50% {
+        transform: translateY(-28px) rotate(8deg) scale(1.08);
+    }
+
+
+    100% {
+        transform: translateY(0) rotate(0deg) scale(1);
+    }
+}
+
+.page {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+        .page {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 28px;
+            align-items: stretch;
+        }
+
+        .intro-card,
+        .form-card {
+            background: rgba(255, 255, 255, 0.88);
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            border-radius: 30px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .intro-card {
+            position: relative;
+            overflow: hidden;
+            padding: 40px;
+            min-height: 100%;
+        }
+
+        .intro-card::before {
+            content: "";
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            right: -70px;
+            top: -70px;
+            background: var(--yellow);
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+
+        .intro-card::after {
+            content: "";
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            left: -50px;
+            bottom: -50px;
+            background: var(--blue);
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+
+        .brand-pill {
+            position: relative;
+            z-index: 1;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--ink);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+            box-shadow: 6px 6px 0 var(--yellow);
+        }
+
+        h1 {
+            position: relative;
+            z-index: 1;
+            margin: 0;
+            font-size: clamp(44px, 7vw, 78px);
+            line-height: 0.92;
+            letter-spacing: -3px;
+            color: var(--ink);
+        }
+
+        .highlight {
+            color: var(--hot-pink);
+            text-shadow: 4px 4px 0 var(--yellow);
+        }
+
+        .subtitle {
+            position: relative;
+            z-index: 1;
+            max-width: 540px;
+            color: #374151;
+            font-size: 18px;
+            line-height: 1.6;
+            margin: 24px 0 28px;
+        }
+
+        .mini-cards {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        .mini-card {
+            background: white;
+            border: 2px solid var(--ink);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: 5px 5px 0 rgba(31, 41, 55, 0.12);
+        }
+
+        .mini-card strong {
+            display: block;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .mini-card span {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.35;
+        }
+
+        .receipt {
+            position: relative;
+            z-index: 1;
+            margin-top: 30px;
+            background: #fffdf3;
+            border: 2px dashed var(--ink);
+            border-radius: 18px;
+            padding: 18px;
+            max-width: 420px;
+            transform: rotate(-1deg);
+        }
+
+        .receipt-title {
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px dashed #c7b98b;
+            padding: 9px 0;
+            font-size: 14px;
+        }
+
+        .stamp {
+            display: inline-block;
+            margin-top: 12px;
+            color: var(--hot-pink);
+            border: 3px solid var(--hot-pink);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-weight: 900;
+            transform: rotate(2deg);
+        }
+
+        .form-card {
+            padding: 30px;
+        }
+
+        .form-header {
+            margin-bottom: 24px;
+        }
+
+        .form-header h2 {
+            margin: 0 0 8px;
+            font-size: 30px;
+            letter-spacing: -1px;
+        }
+
+        .form-header p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash-error,
+        .flash-message {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            padding: 12px 14px;
+            border-radius: 14px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .required {
+            color: var(--hot-pink);
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 14px 14px;
+            border: 2px solid #eadce4;
+            border-radius: 16px;
+            font-size: 16px;
+            background: #fffafd;
+            color: var(--ink);
+            transition: 0.2s ease;
+        }
+
+        input::placeholder {
+            color: #a3a3a3;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--pink);
+            box-shadow: 0 0 0 5px rgba(255, 111, 174, 0.18);
+            background: white;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-row input[type="text"] {
+            flex: 1;
+        }
+
+        .na-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 800;
+            color: var(--muted);
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            margin: 0;
+            font-size: 13px;
+            background: var(--soft-blue);
+            border: 1px solid #bde7ff;
+            padding: 10px 12px;
+            border-radius: 999px;
+        }
+
+        .na-toggle input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--pink);
+        }
+
+        input[readonly] {
+            background-color: #f3f4f6;
+            color: var(--muted);
+            cursor: not-allowed;
+        }
+
+        .help-text {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 7px;
+            line-height: 1.4;
+        }
+
+        .price-input {
+            background-color: #fff8d6 !important;
+            border-color: #ffe27a !important;
+            font-weight: 800;
+        }
+
+        .price-box {
+            background: linear-gradient(135deg, #fff8d6, #ffe3f0);
+            border: 2px solid #ffe27a;
+            border-radius: 22px;
+            padding: 18px;
+        }
+
+        .submit-button {
+            width: 100%;
+            border: none;
+            padding: 17px 24px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--hot-pink), var(--deep-blue));
+            color: white;
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.2s ease;
+            box-shadow: 0 10px 0 #ffd84d, 0 16px 24px rgba(31, 41, 55, 0.18);
+            margin-top: 6px;
+        }
+
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 0 #ffd84d, 0 20px 28px rgba(31, 41, 55, 0.2);
+        }
+
+        .submit-button:active {
+            transform: translateY(4px);
+            box-shadow: 0 5px 0 #ffd84d, 0 10px 18px rgba(31, 41, 55, 0.16);
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 18px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .tagline-strip {
+            margin-top: 22px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: white;
+            border: 2px solid var(--ink);
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 800;
+            box-shadow: 3px 3px 0 var(--yellow);
+        }
+
+        @media (max-width: 900px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .intro-card {
+                padding: 30px;
+            }
+        }
+
+        @media (max-width: 650px) {
+            body {
+                padding: 14px;
+            }
+
+            .intro-card,
+            .form-card {
+                border-radius: 24px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mini-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .input-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .na-toggle {
+                justify-content: center;
+            }
+        }
+
+        
+    </style>
+</head>
+
+<body>
+
+    <div class="floating-receipts">
+    <div class="bg-receipt">
+        <div class="receipt-top">THRIFT AI</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>ITEM</span><span>$24.99</span></div>
+        <div class="receipt-row-bg"><span>VALUE</span><span>$41.00</span></div>
+        <div class="receipt-row-bg"><span>DEAL</span><span>YES</span></div>
+    </div>
+
+    <div class="bg-receipt small">
+        <div class="receipt-top">GOOD FIND</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>YOU SAVE</span><span>$16</span></div>
+        <div class="receipt-row-bg"><span>SCORE</span><span>92%</span></div>
+    </div>
+
+    <div class="bg-receipt tilted">
+        <div class="receipt-top">HELL NO</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>YOUR PRICE</span><span>$100</span></div>
+        <div class="receipt-row-bg"><span>FOUND</span><span>$20</span></div>
+    </div>
+
+
+   
+
+     <div class="bg-receipt blue-note">
+        <div class="receipt-top">THRIFT WIN</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>PRICE</span><span>$12</span></div>
+        <div class="receipt-row-bg"><span>VALUE</span><span>$29</span></div>
+        <div class="receipt-row-bg"><span>SAVED</span><span>$17</span></div>
+        <div class="receipt-stamp-bg">SLAY</div>
+    </div>
+
+    <div class="bg-receipt yellow-note">
+        <div class="receipt-top">DEAL DETECTED</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>ASKING</span><span>$30</span></div>
+        <div class="receipt-row-bg"><span>WORTH</span><span>$52</span></div>
+        <div class="receipt-row-bg"><span>DIFF</span><span>$22</span></div>
+        <div class="receipt-stamp-bg">SAVED $$$</div>
+    </div>
+
+    <div class="bg-receipt">
+        <div class="receipt-top">STEAL</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>PAID</span><span>$18</span></div>
+        <div class="receipt-row-bg"><span>WORTH</span><span>$65</span></div>
+        <div class="receipt-stamp-bg">-72%</div>
+    </div>
+
+    <div class="bg-receipt small">
+        <div class="receipt-top">NO WAY</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>ASKING</span><span>$200</span></div>
+        <div class="receipt-row-bg"><span>VALUE</span><span>$40</span></div>
+        <div class="receipt-stamp-bg">SKIP</div>
+    </div>
+
+    <div class="bg-receipt blue-note">
+        <div class="receipt-top">COP IT</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>PRICE</span><span>$8</span></div>
+        <div class="receipt-row-bg"><span>WORTH</span><span>$22</span></div>
+        <div class="receipt-row-bg"><span>SAVED</span><span>$14</span></div>
+    </div>
+
+    <div class="bg-receipt yellow-note">
+        <div class="receipt-top">VINTAGE</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>LEVI'S</span><span>$22</span></div>
+        <div class="receipt-row-bg"><span>VALUE</span><span>$75</span></div>
+        <div class="receipt-stamp-bg">CLASSIC</div>
+    </div>
+
+    <div class="bg-receipt small">
+        <div class="receipt-top">THRIFT KING</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>RALPH L.</span><span>$12</span></div>
+        <div class="receipt-row-bg"><span>RETAIL</span><span>$85</span></div>
+    </div>
+
+    <div class="bg-receipt tilted">
+        <div class="receipt-top">BUDGET WIN</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>ZARA</span><span>$15</span></div>
+        <div class="receipt-row-bg"><span>RETAIL</span><span>$35</span></div>
+        <div class="receipt-stamp-bg">GET IT</div>
+    </div>
+
+    <div class="bg-receipt tilted">
+        <div class="receipt-top">SOLD</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>BOOTS</span><span>$40</span></div>
+        <div class="receipt-row-bg"><span>VALUE</span><span>$95</span></div>
+    </div>
+
+    <div class="bg-receipt blue-note">
+        <div class="receipt-top">FAIR</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>ASKING</span><span>$28</span></div>
+        <div class="receipt-row-bg"><span>WORTH</span><span>$30</span></div>
+        <div class="receipt-stamp-bg">CLOSE</div>
+    </div>
+
+    <div class="bg-receipt yellow-note">
+        <div class="receipt-top">SLAY QUEEN</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>NIKE</span><span>$22</span></div>
+        <div class="receipt-row-bg"><span>WORTH</span><span>$65</span></div>
+        <div class="receipt-stamp-bg">WIN</div>
+    </div>
+
+    <div class="bg-receipt small">
+        <div class="receipt-top">SKIP</div>
+        <div class="receipt-line"></div>
+        <div class="receipt-row-bg"><span>ASKING</span><span>$50</span></div>
+        <div class="receipt-row-bg"><span>VALUE</span><span>$18</span></div>
+        <div class="receipt-stamp-bg">NAH</div>
+    </div>
+</div>
+</div>
+    <main class="page">
+        <section class="hero">
+            <div class="intro-card">
+                <div class="brand-pill"> THRIFT AI</div>
+
+                <h1>
+                    Is it<br>
+                    <span class="highlight">worth it?</span>
+                </h1>
+
+                <p class="subtitle">
+                    Your closet-smart thrift assistant. Enter the item you found, add the price,
+                    and THRIFT AI estimates whether it is a steal, fair, or overpriced.
+                </p>
+
+                <div class="tagline-strip">
+                    <span class="tag">AI price check</span>
+                    <span class="tag">thrift scanner energy</span>
+                    <span class="tag">similar finds</span>
+                </div>
+
+                <div class="mini-cards">
+                    <div class="mini-card">
+                        <strong>1</strong>
+                        <span>Describe your thrift find.</span>
+                    </div>
+
+                    <div class="mini-card">
+                        <strong>2</strong>
+                        <span>Compare it with market data.</span>
+                    </div>
+
+                    <div class="mini-card">
+                        <strong>3</strong>
+                        <span>Get a deal verdict.</span>
+                    </div>
+                </div>
+
+                <div class="receipt">
+                    <div class="receipt-title">THRIFT CHECK RECEIPT</div>
+                    <div class="receipt-row">
+                        <span>Item</span>
+                        <strong>Vintage Jacket</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Your price</span>
+                        <strong>$24.99</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Estimated value</span>
+                        <strong>$41.00</strong>
+                    </div>
+                    <span class="stamp">GOOD FIND</span>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="form-header">
+                    <h2>Check your find</h2>
+                    <p>
+                        Fill in what you know. Leave anything unknown as N/A and THRIFT AI will still try its best.
+                    </p>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-messages">
+                            {% for category, message in messages %}
+                                <div class="flash-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <form action="/search" method="POST">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="brand">Brand <span class="required">*</span></label>
+                            <div class="input-row">
+                                <input type="text" name="brand" id="brand" required placeholder="Nike, Zara, Levi's">
+                                <label class="na-toggle">
+                                    <input type="checkbox" class="na-checkbox" data-target="brand"> N/A
+                                </label>
+                            </div>
+                            <div class="help-text">The brand on the tag, label, or listing.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="item_type">Item Type <span class="required">*</span></label>
+                            <div class="input-row">
+                                <input type="text" name="item_type" id="item_type" required placeholder="hoodie, jeans, jacket">
+                                <label class="na-toggle">
+                                    <input type="checkbox" class="na-checkbox" data-target="item_type"> N/A
+                                </label>
+                            </div>
+                            <div class="help-text">What kind of item is it?</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="size">Size</label>
+                            <select name="size" id="size">
+                                <option value="">Select size</option>
+                                <option value="XS">XS</option>
+                                <option value="S">S</option>
+                                <option value="M" selected>M</option>
+                                <option value="L">L</option>
+                                <option value="XL">XL</option>
+                                <option value="XXL">XXL</option>
+                                <option value="N/A">N/A</option>
+                            </select>
+                            <div class="help-text">Pick the closest size.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="condition">Condition</label>
+                            <select name="condition" id="condition">
+                                <option value="used" selected>Used / Thrifted</option>
+                                <option value="new">New</option>
+                                <option value="N/A">N/A</option>
+                            </select>
+                            <div class="help-text">Used is usually best for thrift pricing.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="color">Color</label>
+                            <div class="input-row">
+                                <input type="text" name="color" id="color" placeholder="black, blue, cream">
+                                <label class="na-toggle">
+                                    <input type="checkbox" class="na-checkbox" data-target="color"> N/A
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="material">Material</label>
+                            <div class="input-row">
+                                <input type="text" name="material" id="material" placeholder="cotton, wool, denim">
+                                <label class="na-toggle">
+                                    <input type="checkbox" class="na-checkbox" data-target="material"> N/A
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group full price-box">
+                            <label for="user_price">Price you found it for</label>
+                            <input
+                                type="text"
+                                name="user_price"
+                                id="user_price"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="e.g., 24.99"
+                                class="price-input"
+                            >
+                            <div class="help-text">
+                                Add the price from the thrift store or listing so THRIFT AI can judge the deal.
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-button">
+                         Check My Deal
+                    </button>
+
+                    <p class="footer-note">
+                        Powered by marketplace data, machine learning, and a little thrifting instinct.
+                    </p>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.querySelectorAll('.na-checkbox').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var target = document.getElementById(cb.dataset.target);
+
+                if (!target) return;
+
+                if (cb.checked) {
+                    target.dataset.prevValue = target.value;
+                    target.value = 'N/A';
+                    target.readOnly = true;
+                } else {
+                    target.readOnly = false;
+                    target.value = target.dataset.prevValue || '';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
