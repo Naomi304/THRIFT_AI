@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
+if app.secret_key == 'dev-key-change-in-production':
+    logger.warning("FLASK_SECRET_KEY is not set — using the insecure dev key. "
+                   "Set FLASK_SECRET_KEY before deploying to production.")
 
 # Global variables for models
 model = None
@@ -375,4 +378,10 @@ def search():
         return render_template('input.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Local development server. Debug is OFF unless FLASK_DEBUG is set, so an
+    # accidental production run never exposes the Werkzeug debugger (RCE risk).
+    # In production, run via waitress instead: `python serve.py`.
+    debug = os.getenv('FLASK_DEBUG', '').strip().lower() in ('1', 'true', 'yes', 'on')
+    host = os.getenv('HOST', '127.0.0.1')
+    port = int(os.getenv('PORT', '5000'))
+    app.run(host=host, port=port, debug=debug)
