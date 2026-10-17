@@ -12,7 +12,6 @@ from apis.craigslist_api import get_craigslist_data
 from apis.kijiji_api import get_kijiji_data
 from apis.ebay_api import get_ebay_data
 from apis.google_api import get_google_data
-from apis.ai_scraper_api import get_ai_scraper_data
 from utils import validate_input, sanitize_input, is_na
 
 # Configure logging
@@ -25,20 +24,35 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
 # Global variables for models
 model = None
 label_encoder = None
-size_encoder = None
+condition_encoder = None
 
 def load_models():
     """Load ML models with error handling"""
-    global model, label_encoder, size_encoder
+    global model, label_encoder, condition_encoder
     try:
         model = joblib.load('price_predictor_model.pkl')
         label_encoder = joblib.load('label_encoder.pkl')
-        size_encoder = joblib.load('size_encoder.pkl')
+        condition_encoder = joblib.load('condition_encoder.pkl')
         logger.info("ML models loaded successfully")
         return True
     except Exception as e:
         logger.error(f"Failed to load ML models: {e}")
         return False
+
+
+def _match_class(encoder, value):
+    """Case-insensitively map a user-entered value to a known encoder class.
+
+    Returns the canonical class string if found, else None. This lets users
+    type "Hoodie"/"NIKE" and still match the model's "hoodie"/"Nike" classes.
+    """
+    if value is None:
+        return None
+    target = str(value).strip().lower()
+    for cls in encoder.classes_:
+        if str(cls).strip().lower() == target:
+            return cls
+    return None
 
 # Load models on startup
 models_loaded = load_models()
@@ -47,30 +61,54 @@ models_loaded = load_models()
 def home():
     return render_template('input.html')  # This is the search form where users enter their input
 
-def get_ml_prediction(brand, item_type, size):
-    """Get ML price prediction with error handling"""
+def get_ml_prediction(brand, item_type, condition):
+    """Get ML price prediction with error handling.
+
+    The model is trained on Brand + Item Type + Condition (from real
+    marketplace sold data). Brand/item lookups are case-insensitive; an
+    unknown brand or item type returns a friendly message.
+    """
     if not models_loaded:
         return None, "ML models not available"
 
-    if is_na(brand) or is_na(item_type) or is_na(size):
-        return None, "AI prediction skipped: brand, item type, and size are required (one or more marked N/A)"
+    if is_na(brand) or is_na(item_type):
+        return None, "AI prediction skipped: brand and item type are required (one or more marked N/A)"
+
+    # Case-insensitively match the user's text to known model categories.
+    brand_cls = _match_class(label_encoder, brand)
+    item_cls = _match_class(label_encoder, item_type)
+
+    unknown = []
+    if brand_cls is None:
+        unknown.append(f"brand '{brand}'")
+    if item_cls is None:
+        unknown.append(f"item type '{item_type}'")
+    if unknown:
+        known_brands = "Nike, Adidas, H&M, Zara, Gap, Levi's, Tommy Hilfiger"
+        return None, (
+            f"The model hasn't seen {', '.join(unknown)} yet. "
+            f"Try a trained brand (e.g. {known_brands}) and a common item type."
+        )
+
+    # Condition: fall back to 'used' for N/A or anything the model doesn't know.
+    condition_cls = _match_class(condition_encoder, condition) \
+        or _match_class(condition_encoder, "used")
+    if condition_cls is None:
+        # Extremely unlikely (model always has at least one condition class).
+        condition_cls = condition_encoder.classes_[0]
 
     try:
-        # Encode the user input
-        brand_encoded = label_encoder.transform([brand])[0]
-        item_type_encoded = label_encoder.transform([item_type])[0]
-        size_encoded = size_encoder.transform([size])[0]
-        
-        # Create DataFrame and predict
-        user_input = pd.DataFrame([[brand_encoded, item_type_encoded, size_encoded]], 
-                                columns=['Brand', 'Item Type', 'Size'])
+        brand_encoded = label_encoder.transform([brand_cls])[0]
+        item_type_encoded = label_encoder.transform([item_cls])[0]
+        condition_encoded = condition_encoder.transform([condition_cls])[0]
+
+        user_input = pd.DataFrame(
+            [[brand_encoded, item_type_encoded, condition_encoded]],
+            columns=['Brand', 'Item Type', 'Condition']
+        )
         predicted_price = model.predict(user_input)[0]
         return round(predicted_price, 2), None
-        
-    except ValueError as e:
-        if "not in" in str(e).lower():
-            return None, f"Unknown category. Please try common brands, item types, or sizes."
-        return None, f"Prediction error: {e}"
+
     except Exception as e:
         logger.error(f"ML prediction error: {e}")
         return None, "Prediction temporarily unavailable"
@@ -83,8 +121,7 @@ def fetch_api_data(brand, item_type, size, color, material, condition):
         'craigslist': {'status': 'error', 'data': None, 'message': 'Not fetched'},
         'kijiji': {'status': 'error', 'data': None, 'message': 'Not fetched'},
         'ebay': {'status': 'error', 'data': None, 'message': 'Not fetched'},
-        'google': {'status': 'error', 'data': None, 'message': 'Not fetched'},
-        'ai_scraper': {'status': 'error', 'data': None, 'message': 'Not fetched'}
+        'google': {'status': 'error', 'data': None, 'message': 'Not fetched'}
     }
 
     def is_success(data):
@@ -218,38 +255,12 @@ def fetch_api_data(brand, item_type, size, color, material, condition):
                 'message': str(e)
             }
 
-    def fetch_ai_scraper():
-        try:
-            search_url = f"https://www.google.com/search?q={brand}+{item_type}+{size}+price"
-            data = get_ai_scraper_data(search_url, summary=True)
-
-            if is_success(data):
-                results['ai_scraper'] = {
-                    'status': 'success',
-                    'data': data,
-                    'message': data.get('message', 'Data retrieved')
-                }
-            else:
-                results['ai_scraper'] = {
-                    'status': 'error',
-                    'data': data,
-                    'message': get_message(data)
-                }
-
-        except Exception as e:
-            results['ai_scraper'] = {
-                'status': 'error',
-                'data': None,
-                'message': str(e)
-            }
-
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         executor.submit(fetch_amazon)
         executor.submit(fetch_craigslist)
         executor.submit(fetch_kijiji)
         executor.submit(fetch_ebay)
         executor.submit(fetch_google)
-        executor.submit(fetch_ai_scraper)
 
     return results
 
@@ -317,8 +328,8 @@ def search():
         material = form_data['material']
         condition = form_data['condition']
         
-        # Get ML prediction
-        predicted_price, prediction_error = get_ml_prediction(brand, item_type, size or 'M')
+        # Get ML prediction (model uses brand + item type + condition)
+        predicted_price, prediction_error = get_ml_prediction(brand, item_type, condition)
 
         # Fetch market data from APIs — treat N/A as absent so we don't literally
         # search marketplaces for the string "N/A".

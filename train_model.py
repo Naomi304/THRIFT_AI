@@ -5,176 +5,134 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
 import joblib
-import os
 
-def create_sample_data():
-    """Create sample training data for clothing price prediction"""
-    np.random.seed(42)
-    
-    # Sample brands
-    brands = ['Nike', 'Adidas', 'H&M', 'Zara', 'Gap', 'Levi\'s', 'Tommy Hilfiger', 
-              'Calvin Klein', 'Ralph Lauren', 'Gucci', 'Prada', 'Burberry']
-    
-    # Sample item types
-    item_types = ['t-shirt', 'jeans', 'jacket', 'dress', 'shirt', 'sweater', 
-                  'pants', 'skirt', 'blouse', 'coat', 'shorts', 'hoodie']
-    
-    # Sample sizes
-    sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-    
-    # Generate 1000 sample records
-    n_samples = 1000
-    data = []
-    
-    for _ in range(n_samples):
-        brand = np.random.choice(brands)
-        item_type = np.random.choice(item_types)
-        size = np.random.choice(sizes)
-        
-        # Base price influenced by brand and item type
-        brand_multiplier = {
-            'Gucci': 8.0, 'Prada': 7.5, 'Burberry': 6.0,
-            'Ralph Lauren': 3.0, 'Calvin Klein': 2.5, 'Tommy Hilfiger': 2.2,
-            'Levi\'s': 2.0, 'Nike': 1.8, 'Adidas': 1.7,
-            'Gap': 1.3, 'Zara': 1.2, 'H&M': 1.0
-        }.get(brand, 1.5)
-        
-        item_base_price = {
-            'coat': 150, 'jacket': 100, 'dress': 80, 'jeans': 70,
-            'pants': 60, 'shirt': 45, 'blouse': 50, 'sweater': 65,
-            'hoodie': 55, 't-shirt': 25, 'shorts': 35, 'skirt': 40
-        }.get(item_type, 50)
-        
-        # Size multiplier (larger sizes might cost more)
-        size_multiplier = {'XS': 1.0, 'S': 1.0, 'M': 1.0, 'L': 1.1, 'XL': 1.15, 'XXL': 1.2}.get(size, 1.0)
-        
-        # Calculate price with some randomness
-        base_price = item_base_price * brand_multiplier * size_multiplier
-        price = max(10, base_price + np.random.normal(0, base_price * 0.2))  # Add 20% variance
-        
-        data.append({
-            'Brand': brand,
-            'Item Type': item_type,
-            'Size': size,
-            'Price': round(price, 2)
-        })
-    
-    return pd.DataFrame(data)
+# Train on the real collected marketplace data (real_training_data.csv).
+# The real data has brand, item_type, condition and an actual sale_price, but
+# NO size column, so the model uses Brand + Item Type + Condition as features.
+# Size is still collected in the UI for display/search but is not a model input.
+
+DATA_FILE = "real_training_data.csv"
+TARGET = "sale_price"
+
+
+def clean_condition(value):
+    """Normalize the messy real-world condition field to 'new' or 'used'.
+
+    Returns None for junk values (shipping blurbs, stray attributes, NaN) so
+    those rows can be dropped.
+    """
+    if not isinstance(value, str):
+        return None
+    v = value.strip().lower()
+    if v.startswith("new"):          # "new", "new (other)"
+        return "new"
+    if v == "used":
+        return "used"
+    return None                       # drop anything else
+
+
+def load_and_clean():
+    df = pd.read_csv(DATA_FILE)
+
+    # Keep only what we model + the target, drop rows missing essentials.
+    df = df[["brand", "item_type", "condition", TARGET]].copy()
+    df = df.dropna(subset=["brand", "item_type", TARGET])
+
+    # Normalize condition and drop junk-condition rows.
+    df["condition"] = df["condition"].apply(clean_condition)
+    df = df.dropna(subset=["condition"])
+
+    # Normalize text casing so lookups are predictable:
+    #   brands title-ish as stored, item types lowercase.
+    df["brand"] = df["brand"].astype(str).str.strip()
+    df["item_type"] = df["item_type"].astype(str).str.strip().str.lower()
+
+    # Drop non-positive / absurd prices.
+    df = df[(df[TARGET] > 0) & (df[TARGET] <= 1000)]
+
+    return df.reset_index(drop=True)
+
 
 def train_models():
-    """Train ML models and save them"""
-    print("Creating sample training data...")
-    df = create_sample_data()
-    
-    print(f"Dataset shape: {df.shape}")
-    print(f"Sample data:\n{df.head()}")
-    
-    # Prepare features and target
-    X = df[['Brand', 'Item Type', 'Size']]
-    y = df['Price']
-    
-    # Create label encoders
-    print("Creating label encoders...")
+    print(f"Loading real data from {DATA_FILE} ...")
+    df = load_and_clean()
+    print(f"Usable rows after cleaning: {len(df)}")
+    print(f"Brands: {sorted(df['brand'].unique())}")
+    print(f"Item types: {sorted(df['item_type'].unique())}")
+    print(f"Conditions: {sorted(df['condition'].unique())}")
+
+    X = df[["brand", "item_type", "condition"]]
+    y = df[TARGET]
+
+    # One encoder shared across brand + item type (matches app lookup logic),
+    # a separate one for condition.
     label_encoder = LabelEncoder()
-    size_encoder = LabelEncoder()
-    
-    # Encode categorical features
-    all_categories = pd.concat([X['Brand'], X['Item Type']])
-    label_encoder.fit(all_categories)
-    
-    # Encode Size separately
-    size_encoder.fit(X['Size'])
-    
-    # Transform the data
+    condition_encoder = LabelEncoder()
+
+    label_encoder.fit(pd.concat([X["brand"], X["item_type"]]))
+    condition_encoder.fit(X["condition"])
+
     X_encoded = pd.DataFrame({
-        'Brand': label_encoder.transform(X['Brand']),
-        'Item Type': label_encoder.transform(X['Item Type']),
-        'Size': size_encoder.transform(X['Size'])
+        "Brand": label_encoder.transform(X["brand"]),
+        "Item Type": label_encoder.transform(X["item_type"]),
+        "Condition": condition_encoder.transform(X["condition"]),
     })
-    
-    print(f"Encoded features shape: {X_encoded.shape}")
-    
-    # Split the data
+
     X_train, X_test, y_train, y_test = train_test_split(
         X_encoded, y, test_size=0.2, random_state=42
     )
-    
-    # Train the model
+
     print("Training Random Forest model...")
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model = RandomForestRegressor(n_estimators=200, random_state=42)
     model.fit(X_train, y_train)
-    
-    # Evaluate the model
+
     y_pred = model.predict(X_test)
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
-    
-    print(f"Model Performance:")
-    print(f"Mean Absolute Error: ${mae:.2f}")
-    print(f"R² Score: {r2:.3f}")
-    
-    # Save the models
+    print("Model Performance:")
+    print(f"  Mean Absolute Error: ${mae:.2f}")
+    print(f"  R2 Score: {r2:.3f}")
+    print(f"  (price median=${y.median():.2f}, mean=${y.mean():.2f})")
+
     print("Saving models...")
-    joblib.dump(model, 'price_predictor_model.pkl')
-    joblib.dump(label_encoder, 'label_encoder.pkl')
-    joblib.dump(size_encoder, 'size_encoder.pkl')
-    
-    # Also save the training data for reference
-    df.to_csv('training_data.csv', index=False)
-    
-    print("Models saved successfully!")
-    print("Files created:")
-    print("- price_predictor_model.pkl")
-    print("- label_encoder.pkl")
-    print("- size_encoder.pkl")
-    print("- training_data.csv")
-    
-    return model, label_encoder, size_encoder
+    joblib.dump(model, "price_predictor_model.pkl")
+    joblib.dump(label_encoder, "label_encoder.pkl")
+    joblib.dump(condition_encoder, "condition_encoder.pkl")
+    print("Saved: price_predictor_model.pkl, label_encoder.pkl, condition_encoder.pkl")
+
+    return model, label_encoder, condition_encoder
+
 
 def test_model():
-    """Test the trained model with sample predictions"""
     print("\nTesting the trained model...")
-    
-    # Load the saved models
-    model = joblib.load('price_predictor_model.pkl')
-    label_encoder = joblib.load('label_encoder.pkl')
-    size_encoder = joblib.load('size_encoder.pkl')
-    
-    # Test cases
+    model = joblib.load("price_predictor_model.pkl")
+    label_encoder = joblib.load("label_encoder.pkl")
+    condition_encoder = joblib.load("condition_encoder.pkl")
+
     test_cases = [
-        {'brand': 'Nike', 'item_type': 't-shirt', 'size': 'M'},
-        {'brand': 'Gucci', 'item_type': 'jacket', 'size': 'L'},
-        {'brand': 'H&M', 'item_type': 'jeans', 'size': 'S'},
+        {"brand": "Nike", "item_type": "t-shirt", "condition": "used"},
+        {"brand": "Levi's", "item_type": "jeans", "condition": "used"},
+        {"brand": "Zara", "item_type": "jacket", "condition": "new"},
     ]
-    
+
     for i, case in enumerate(test_cases, 1):
         try:
-            brand_encoded = label_encoder.transform([case['brand']])[0]
-            item_type_encoded = label_encoder.transform([case['item_type']])[0]
-            size_encoded = size_encoder.transform([case['size']])[0]
-            
-            input_data = pd.DataFrame([[brand_encoded, item_type_encoded, size_encoded]], 
-                                    columns=['Brand', 'Item Type', 'Size'])
-            
-            predicted_price = model.predict(input_data)[0]
-            
-            print(f"Test {i}: {case['brand']} {case['item_type']} (size {case['size']}) -> ${predicted_price:.2f}")
-            
+            b = label_encoder.transform([case["brand"]])[0]
+            it = label_encoder.transform([case["item_type"]])[0]
+            c = condition_encoder.transform([case["condition"]])[0]
+            X = pd.DataFrame([[b, it, c]], columns=["Brand", "Item Type", "Condition"])
+            price = model.predict(X)[0]
+            print(f"Test {i}: {case['brand']} {case['item_type']} ({case['condition']}) -> ${price:.2f}")
         except ValueError as e:
             print(f"Test {i} failed: {e}")
 
+
 if __name__ == "__main__":
-    print("=== THRIFT_AI Model Training ===")
-    
+    print("=== THRIFT_AI Model Training (real data) ===")
     try:
-        # Train the models
-        model, label_encoder, size_encoder = train_models()
-        
-        # Test the models
+        train_models()
         test_model()
-        
-        print("\n✅ Model training completed successfully!")
-        
+        print("\n[OK] Model training completed successfully!")
     except Exception as e:
-        print(f"❌ Error during training: {e}")
+        print(f"[ERROR] during training: {e}")
         raise
