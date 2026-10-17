@@ -1,16 +1,16 @@
-# 🛍️ THRIFT AI - Smart Clothing Price Checker
+# THRIFT AI - Smart Clothing Price Checker
 
 THRIFT AI is an intelligent web application that helps you determine if you're getting a good deal on clothing items. It uses machine learning to predict fair prices and compares them against your find to tell you if it's a great deal!
 
-## ✨ Features
+## Features
 
-- 🤖 **AI Price Prediction**: ML-powered price estimation based on brand, item type, and size
-- 🔍 **Market Data Integration**: Fetches real-time data from multiple marketplaces (Amazon, Craigslist, Kijiji)
-- 💡 **Deal Assessment**: Tells you if you're getting an excellent deal, fair price, or if it's overpriced
-- 🎨 **Clean Interface**: User-friendly web interface with responsive design
-- 🔒 **Input Validation**: Secure input handling to prevent malicious data
+- **AI Price Prediction**: ML-powered price estimation based on brand, item type, and size
+- **Market Data Integration**: Fetches real-time data from multiple marketplaces (Amazon, Craigslist, Kijiji)
+- **Deal Assessment**: Tells you if you're getting an excellent deal, fair price, or if it's overpriced
+- **Clean Interface**: User-friendly web interface with responsive design
+- **Input Validation**: Secure input handling to prevent malicious data
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.7+
@@ -45,7 +45,7 @@ THRIFT AI is an intelligent web application that helps you determine if you're g
 5. **Open your browser**
    Visit `http://localhost:5000`
 
-## 📊 How It Works
+## How It Works
 
 1. **Enter Item Details**: Input brand, item type, size, color, material, and condition
 2. **Add Your Price**: Enter the price you found to get a deal assessment
@@ -54,13 +54,13 @@ THRIFT AI is an intelligent web application that helps you determine if you're g
 5. **Deal Assessment**: Get clear feedback on whether it's a good deal
 
 ### Deal Categories
-- 🎉 **Excellent Deal**: 30%+ below predicted price
-- 👍 **Good Deal**: 15-30% below predicted price  
-- ✅ **Fair Price**: Within 15% of predicted price
-- ⚠️ **Slightly High**: 15-30% above predicted price
-- 🚨 **Overpriced**: 30%+ above predicted price
+- **Excellent Deal**: 30%+ below predicted price
+- **Good Deal**: 15-30% below predicted price  
+- **Fair Price**: Within 15% of predicted price
+- **Slightly High**: 15-30% above predicted price
+- **Overpriced**: 30%+ above predicted price
 
-## 🔧 Development
+##  Development
 
 ### Project Structure
 ```
@@ -92,7 +92,7 @@ The app integrates with several APIs:
 - **RapidAPI**: For Amazon, Craigslist, and Kijiji data
 - **AI Web Scraper**: For general web scraping
 
-## 🚢 Deployment
+## Deployment
 
 See `DEPLOYMENT_CHECKLIST.md` for a comprehensive deployment guide.
 
@@ -108,7 +108,7 @@ FLASK_SECRET_KEY=your_secret_key
 FLASK_ENV=production
 ```
 
-## 🔒 Security Features
+## Security Features
 
 - Input validation and sanitization
 - SQL injection prevention
@@ -116,11 +116,11 @@ FLASK_ENV=production
 - Secure API key handling
 - Rate limiting ready
 
-## 📝 License
+## License
 
 This project is for educational and personal use. Please ensure you comply with all API terms of service when using external data sources.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -128,7 +128,7 @@ This project is for educational and personal use. Please ensure you comply with 
 4. Test thoroughly
 5. Submit a pull request
 
-## 📞 Support
+## Support
 
 For issues and questions:
 - Check `DEPLOYMENT_CHECKLIST.md` for common problems
