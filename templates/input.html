@@ -490,10 +490,53 @@ body {
             line-height: 1.35;
         }
 
+        .how-it-works {
+            position: relative;
+            z-index: 1;
+            margin-top: 22px;
+            background: white;
+            border: 2px solid var(--ink);
+            border-radius: 18px;
+            padding: 18px;
+            box-shadow: 5px 5px 0 var(--yellow);
+        }
+
+        .how-it-works h3 {
+            margin: 0 0 12px;
+            font-size: 18px;
+        }
+
+        .how-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 9px 0;
+            border-top: 1px dashed #eadce4;
+        }
+
+        .how-label {
+            flex-shrink: 0;
+            width: 82px;
+            background: var(--soft-pink);
+            color: var(--hot-pink);
+            border-radius: 999px;
+            padding: 5px 0;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .how-row p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.45;
+            color: #374151;
+        }
+
         .receipt {
             position: relative;
             z-index: 1;
-            margin-top: 30px;
+            margin: 30px auto 0;
             background: #fffdf3;
             border: 2px dashed var(--ink);
             border-radius: 18px;
@@ -526,6 +569,26 @@ body {
             padding: 8px 12px;
             font-weight: 900;
             transform: rotate(2deg);
+        }
+
+        .bad-receipt {
+            margin: 26px auto 0;
+            transform: rotate(1.5deg);
+        }
+
+        .bad-stamp {
+            color: #b91c1c;
+            border-color: #b91c1c;
+            transform: rotate(-3deg);
+        }
+
+        .receipt-tip {
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 1px dashed #c7b98b;
+            font-size: 13px;
+            line-height: 1.45;
+            color: #374151;
         }
 
         .form-card {
@@ -706,20 +769,25 @@ body {
         }
 
         .tagline-strip {
+            position: relative;
+            z-index: 1;
             margin-top: 22px;
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            align-items: center;
+            white-space: nowrap;
         }
 
         .tag {
-            background: white;
-            border: 2px solid var(--ink);
-            border-radius: 999px;
-            padding: 8px 12px;
             font-size: 13px;
             font-weight: 800;
-            box-shadow: 3px 3px 0 var(--yellow);
+            color: var(--hot-pink);
+        }
+
+        .tag + .tag::before {
+            content: "\2726";
+            margin: 0 8px;
+            color: var(--ink);
+            opacity: 0.4;
         }
 
         @media (max-width: 900px) {
@@ -748,6 +816,14 @@ body {
 
             .mini-cards {
                 grid-template-columns: 1fr;
+            }
+
+            .tag {
+                font-size: 10px;
+            }
+
+            .tag + .tag::before {
+                margin: 0 5px;
             }
 
             .input-row {
@@ -927,6 +1003,22 @@ body {
                     </div>
                 </div>
 
+                <div class="how-it-works">
+                    <h3>How it works</h3>
+                    <div class="how-row">
+                        <span class="how-label">ML MODEL</span>
+                        <p>A machine learning model trained on 1,191 real Amazon and eBay listings predicts a fair price from the brand, item type, and condition.</p>
+                    </div>
+                    <div class="how-row">
+                        <span class="how-label">LIVE APIS</span>
+                        <p>At the same time, THRIFT AI pulls current listings from Amazon, eBay, Craigslist, and Kijiji through marketplace APIs so you can compare similar items.</p>
+                    </div>
+                    <div class="how-row">
+                        <span class="how-label">VERDICT</span>
+                        <p>Your price is compared with the predicted price to tell you if it's a steal, a fair price, or overpriced.</p>
+                    </div>
+                </div>
+
                 <div class="receipt">
                     <div class="receipt-title">THRIFT CHECK RECEIPT</div>
                     <div class="receipt-row">
@@ -1057,6 +1149,26 @@ body {
                         Powered by marketplace data, machine learning, and a little thrifting instinct.
                     </p>
                 </form>
+
+                <div class="receipt bad-receipt">
+                    <div class="receipt-title">THRIFT CHECK RECEIPT</div>
+                    <div class="receipt-row">
+                        <span>Item</span>
+                        <strong>Zara Coat</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Your price</span>
+                        <strong>$65.00</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Estimated value</span>
+                        <strong>$33.46</strong>
+                    </div>
+                    <span class="stamp bad-stamp">OVERPRICED</span>
+                    <div class="receipt-tip">
+                        <strong>TIP:</strong> Offer around $30 or keep looking. Used Zara coats usually sell for about half this price.
+                    </div>
+                </div>
             </div>
         </section>
     </main>
