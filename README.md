@@ -1,4 +1,4 @@
-# THRIFT AI - Smart Clothing Price Checker
+# [THRIFT AI - Smart Clothing Price Checker](https://thrift-ai.onrender.com/)
 
 THRIFT AI is an intelligent web application that helps you determine if you're getting a good deal on clothing items. It uses machine learning to predict fair prices and compares them against your find to tell you if it's a great deal!
 
